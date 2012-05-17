@@ -146,7 +146,7 @@ abstract class ASPPHPProcessor {
 $result	= ASPPHPProcessor::parse_request($_SERVER['REQUEST_URI']);
 if(!isset($result)){
 	// Page not found
-	header('HTTP1/1 404 Not Found');	
+	header('HTTP/1.0 404 Not Found');	
 	echo '<h1>Not Found</h1>'.PHP_EOL
 		 .'<p>'.$result.'</p>';
 	return;
