@@ -62,10 +62,16 @@ abstract class ASPPHPProcessor {
 	protected static function get_mime_for_extension($ext){
 		$mimes	= array('css'	=> 'text/css',
 						'js'	=> 'text/javascript',
+						// Images
 						'jpg'	=> 'image/jpeg',
 						'jpeg'	=> 'image/jpeg',
 						'png'	=> 'image/png',
-						'gif'	=> 'image/gif');
+						'gif'	=> 'image/gif',
+						// Fonts
+						'woff'	=> 'application/x-font-woff',
+						'otf'	=> 'application/x-font-opentype',
+						'eot'	=> 'application/vnd.ms-fontobject',
+						'ttf'	=> 'application/octet-stream');
 		if(isset($mimes[$ext])){
 			return $mimes[$ext];
 		}
