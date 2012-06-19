@@ -1,9 +1,13 @@
 <?php
 abstract class ASPPHPProcessor {
+	const ACTION_DELETE		= 0;
+	const ACTION_COMMENT	= 1;
+	const ACTION_PARSE		= 2;
+
 	/**
-	 * @var bool Whether to comment out ASP within pages. If set to false, all ASP will be deleted
+	 * @var int What action to take on any ASP encountered
 	 */
-	public static $comment_asp	= false;
+	public static $asp_action	= self::ACTION_DELETE;
 	/**
 	 * @var string The root directory to look in for files to process. If unset, the current directory will be used
 	 */
@@ -69,7 +73,7 @@ abstract class ASPPHPProcessor {
 						'gif'	=> 'image/gif',
 						// Fonts
 						'woff'	=> 'application/x-font-woff',
-						'otf'	=> 'application/x-font-opentype',
+						'otf'	=> 'font/opentype',
 						'eot'	=> 'application/vnd.ms-fontobject',
 						'ttf'	=> 'application/octet-stream');
 		if(isset($mimes[$ext])){
@@ -115,22 +119,110 @@ abstract class ASPPHPProcessor {
 	 *
 	 * @static
 	 * @param $path string	The local path to the file
+	 * @param $top bool		Whether this is the top-level parsed file – should not be set from external calls
 	 * @return string		The processed file contents
 	 */
-	public static function parse_file($path){
+	public static function parse_file($path, $top = true){
 		$content	= file_get_contents($path);
 
-		if(self::$comment_asp){
+		if(strtolower(pathinfo($path, PATHINFO_EXTENSION)) != 'asp'){
+			// Non-ASP file – do not parse
+			return $content;
+		}
+
+		$content	= str_replace('<?', '&lt;?', $content);
+
+		// Parse includes
+		$content	= preg_replace_callback('/<!--#include virtual="(.*?)"-->/i', array(__CLASS__, 'include_callback'), $content);
+
+		if(self::$asp_action === self::ACTION_PARSE){
+			// Attempt to interpret ASP
+
+			// Remove any potenial PHP – will be eval'd
+
+			// Parse ASP
+			$content	= preg_replace_callback('/<\%([^%]*?)\%>/ms', array(__CLASS__, 'parse_callback'), $content);
+
+			if($top){
+				ob_start();
+				eval('?'.'>'.$content);
+				$content	= ob_get_clean();
+			}
+
+		} elseif(self::$asp_action === self::ACTION_COMMENT){
 			// Comment out ASP
-			$content	= preg_replace('/(<\%.*?\%>)/', '<!-- $1 -->', $content);
+			$content	= preg_replace('/(<\%([^%]*?)\%>)/', '<!-- $1 -->', $content);
 		} else {
 			// Strip all ASP
-			$content	= preg_replace('/<\%.*?\%>/', '', $content);
+			$content	= preg_replace('/<\%([^%]*?)\%>/', '', $content);
 		}
-	
-		$content	= preg_replace_callback('/<!--#include virtual="(.*?)"-->/i', array(__CLASS__, 'parse_callback'), $content);
 
 		return $content;
+	}
+
+	/**
+	 * The callback for the ASP parsing regex, converting ASP
+	 * code to PHP code, and wrapping it in the correct tags
+	 *
+	 * @static
+	 * @param $params array	The regex matches. Index 1 is the matched ASP code
+	 * @return string		The converted PHP code
+	 */
+	protected static function parse_callback($params){
+		$result	= self::convert_asp(trim($params[1]));
+		
+		return '<?php'.PHP_EOL.$result.PHP_EOL.'?>';
+	}
+
+	/**
+	 * Converts a block of ASP code into PHP code
+	 *
+	 * @static
+	 * @param $asp string	The ASP code to convert, with no wrapping tags
+	 * @return string		The converted PHP code, with no wrapping tags
+	 */
+	public static function convert_asp($asp){
+		$asp	= explode(PHP_EOL, $asp);
+		
+		$string	= '';
+		foreach($asp as $line){
+			// Strip comments
+			if(strpos($line, '\'') !== false){
+				$line	= substr($line, 0, strpos($line, '\''));
+			}
+
+			if(strlen(trim($line)) < 1){
+				// Blank line
+				continue;
+			}
+
+			if(stripos($line, 'dim ') === 0){
+				// Defining variables – unneccesary
+				continue;
+			}
+
+			// If
+			if(stripos($line, 'if ') === 0){
+				$line	= preg_replace('/if (.*?) then/i', 'if($1){', $line);
+				$line	= preg_replace('/(\w+) ?=/i', '\$$1 =', $line);
+				$line	= str_replace('=', '==', $line);
+
+			} else if(stripos($line, 'end if') === 0){
+				$line	= '}';
+			}
+
+			// Variable – `myVar = 1 --> $myVar = 1`
+			$line	= preg_replace('/^(\w*?)[ \t]?=[ \t]?(.*?)$/i', '\$$1 = $2;', $line);
+
+			$string	.= $line.PHP_EOL;
+		}
+
+		$string	= trim($string);
+		if(strlen($string) < 1){
+			return '';
+		}
+
+		return $string;
 	}
 
 	/**
@@ -141,18 +233,24 @@ abstract class ASPPHPProcessor {
 	 * @param $params array	The regex matches. Index 1 is the matched URL.
 	 * @return string		The processed contents of the requested file
 	 */
-	protected static function parse_callback($params){
+	protected static function include_callback($params){
 		$path	= self::$root_dir.ltrim($params[1], '/');
 
-		return self::parse_file($path);
+		$result	= self::parse_file($path, false);
+		if(!$result){
+			return '<!-- '.$path.' -->';
+		}
+
+		return $result;
 	}
 };
 
 // Process URL
+ASPPHPProcessor::$asp_action	= ASPPHPProcessor::ACTION_PARSE;
 $result	= ASPPHPProcessor::parse_request($_SERVER['REQUEST_URI']);
 if(!isset($result)){
 	// Page not found
-	header('HTTP/1.0 404 Not Found');	
+	header('HTTP/1.0 404 Not Found');
 	echo '<h1>Not Found</h1>'.PHP_EOL
 		 .'<p>'.$result.'</p>';
 	return;
