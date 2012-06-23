@@ -202,10 +202,11 @@ abstract class ASPPHPProcessor {
 			}
 
 			// If
-			if(stripos($line, 'if ') === 0){
-				$line	= preg_replace('/if (.*?) then/i', 'if($1){', $line);
-				$line	= preg_replace('/(\w+) ?=/i', '\$$1 =', $line);
-				$line	= str_replace('=', '==', $line);
+			if(stripos($line, 'if ') === 0 || stripos($line, 'else if ') === 0){
+				$line	= preg_replace('/((?:else )?)if (.*?) then/i', '$1if($2){', $line);
+				$line	= preg_replace('/(\w+) ?([=<>])/i', '\$$1 $2', $line);
+				$line	= str_replace('<>', '!=', $line);
+				$line	= preg_replace('/([\w ])=([\w ])/i', '$1==$2', $line);
 
 			} else if(stripos($line, 'end if') === 0){
 				$line	= '}';
