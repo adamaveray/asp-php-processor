@@ -184,6 +184,10 @@ abstract class ASPPHPProcessor {
 	public static function convert_asp($asp){
 		$asp	= explode(PHP_EOL, $asp);
 		
+		if(count($asp) == 1 && substr($asp[0], 0, 1) == '='){
+			return 'echo '.self::convert_asp_fragment(substr($asp[0], 1));
+		}
+		
 		$string	= '';
 		foreach($asp as $line){
 			// Strip comments
@@ -230,6 +234,15 @@ abstract class ASPPHPProcessor {
 		}
 
 		return $string;
+	}
+
+	protected static function convert_asp_fragment($fragment){
+		if(preg_match('/\w[\w_\d]*?/', $fragment)){
+			// Variable
+			return '$'.$fragment;
+		}
+
+		return '/* Unknown: '.$fragment.' */';
 	}
 
 	/**
