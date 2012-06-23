@@ -59,6 +59,24 @@ site's root directory. That's it.
   _not yet supported_ (eg: `<% myVar = anotherVar&" else" %>`
   is not supported).
   
+- ### Outputting/Writing
+
+  ```
+  <p>Welcome to <%=pageName %></p>
+  ```
+  
+  _converts to_
+  
+  ```
+  <p>Welcome to <?php echo $pageName;?></p>
+  ```
+  
+  **Note:** Full `Response.Write` calls are _not yet supported_.
+  Additionally, the converted PHP code will be the full `echo`
+  call, not shorthand `<?=`, so will not be affected by PHP's
+  [`short_open_tags` setting](http://www.php.net/manual/en/ini.core.php#ini.short-open-tag).
+
+  
 - ### `if` Statements
 
   Basic `if` statements are available.
@@ -68,6 +86,10 @@ site's root directory. That's it.
   If myVar = 4 Then
   %>
 	<p>myVar is 4</p>
+  <%
+  Else
+  %>
+  	<p>myVar is not 4</p>
   <%
   End If
   %>
@@ -81,12 +103,33 @@ site's root directory. That's it.
   ?>
   	<p>myVar is 4</p>
   <?php
+  } else {  
+  ?>
+  	<p>myVar is not 4</p>
+  <?php
   }
   ?>
   ```
   
-  **Note:** Currently, `else`/`else if` statements
-  are _not yet supported_.
+- ### `GET`/`POST` Requests
+
+  Outputting and assigning POST and GET data to variables is supported.
+  
+  ```
+  dim myVar
+  myVar = Request("field_name")
+  ```
+  
+  _cnoverts to_
+  
+  ```
+  $myVar = $_REQUEST["field_name"]
+  ```
+  
+  **Note:** Depending on your [error configuration](http://php.net/manual/en/function.error-reporting.php),
+  if the field requested was not sent in the request
+  you may trigger a warning.
+
     
 
 ## Advanced Usage ##
