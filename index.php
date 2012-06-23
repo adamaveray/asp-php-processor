@@ -217,6 +217,10 @@ abstract class ASPPHPProcessor {
 			// Variable – `myVar = 1 --> $myVar = 1`
 			$line	= preg_replace('/^(\w*?)[ \t]?=[ \t]?(.*?)$/i', '\$$1 = $2;', $line);
 
+			$find		= array('/request\((.*?)\)/i');
+			$replace	= array('$_REQUEST[$1]');
+			$line	= preg_replace($find, $replace, $line);
+
 			$string	.= $line.PHP_EOL;
 		}
 
