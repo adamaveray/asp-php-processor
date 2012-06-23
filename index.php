@@ -184,6 +184,10 @@ abstract class ASPPHPProcessor {
 	public static function convert_asp($asp){
 		$asp	= explode(PHP_EOL, $asp);
 		
+		if(count($asp) == 1 && substr($asp[0], 0, 1) == '='){
+			return 'echo '.self::convert_asp_fragment(substr($asp[0], 1));
+		}
+		
 		$string	= '';
 		foreach($asp as $line){
 			// Strip comments
@@ -191,7 +195,9 @@ abstract class ASPPHPProcessor {
 				$line	= substr($line, 0, strpos($line, '\''));
 			}
 
-			if(strlen(trim($line)) < 1){
+			$line	= trim($line);
+
+			if(strlen($line) < 1){
 				// Blank line
 				continue;
 			}
@@ -202,10 +208,11 @@ abstract class ASPPHPProcessor {
 			}
 
 			// If
-			if(stripos($line, 'if ') === 0){
-				$line	= preg_replace('/if (.*?) then/i', 'if($1){', $line);
-				$line	= preg_replace('/(\w+) ?=/i', '\$$1 =', $line);
-				$line	= str_replace('=', '==', $line);
+			if(stripos($line, 'if ') === 0 || stripos($line, 'else if ') === 0){
+				$line	= preg_replace('/((?:else )?)if (.*?) then/i', '$1if($2){', $line);
+				$line	= preg_replace('/(\w+) ?([=<>])/i', '\$$1 $2', $line);
+				$line	= str_replace('<>', '!=', $line);
+				$line	= preg_replace('/([\w ])=([\w ])/i', '$1==$2', $line);
 
 			} else if(stripos($line, 'end if') === 0){
 				$line	= '}';
@@ -213,6 +220,10 @@ abstract class ASPPHPProcessor {
 
 			// Variable – `myVar = 1 --> $myVar = 1`
 			$line	= preg_replace('/^(\w*?)[ \t]?=[ \t]?(.*?)$/i', '\$$1 = $2;', $line);
+
+			$find		= array('/request\((.*?)\)/i');
+			$replace	= array('$_REQUEST[$1]');
+			$line	= preg_replace($find, $replace, $line);
 
 			$string	.= $line.PHP_EOL;
 		}
@@ -223,6 +234,15 @@ abstract class ASPPHPProcessor {
 		}
 
 		return $string;
+	}
+
+	protected static function convert_asp_fragment($fragment){
+		if(preg_match('/\w[\w_\d]*?/', $fragment)){
+			// Variable
+			return '$'.$fragment;
+		}
+
+		return '/* Unknown: '.$fragment.' */';
 	}
 
 	/**
