@@ -191,7 +191,9 @@ abstract class ASPPHPProcessor {
 				$line	= substr($line, 0, strpos($line, '\''));
 			}
 
-			if(strlen(trim($line)) < 1){
+			$line	= trim($line);
+
+			if(strlen($line) < 1){
 				// Blank line
 				continue;
 			}
