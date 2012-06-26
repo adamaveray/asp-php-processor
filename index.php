@@ -12,6 +12,11 @@ abstract class ASPPHPProcessor {
 	 * @var string The root directory to look in for files to process. If unset, the current directory will be used
 	 */
 	public static $root_dir;
+	
+	protected static $replace	= array(
+		'/request\((.*?)\)/i'				=> '$_REQUEST[$1]',
+		'/replace\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)'
+	);
 
 	/**
 	 * Filters the given URL, stripping the querystring and other elements,
@@ -141,7 +146,7 @@ abstract class ASPPHPProcessor {
 		$content	= str_replace('<?', '&lt;?', $content);
 
 		// Parse includes
-		$content	= preg_replace_callback('/<!--#include virtual="(.*?)"-->/i', array(__CLASS__, 'include_callback'), $content);
+		$content	= preg_replace_callback('/<!-- ?#include virtual="(.*?)" ?-->/i', array(__CLASS__, 'include_callback'), $content);
 
 		if(self::$asp_action === self::ACTION_PARSE){
 			// Attempt to interpret ASP
@@ -189,11 +194,11 @@ abstract class ASPPHPProcessor {
 	 * @param $asp string	The ASP code to convert, with no wrapping tags
 	 * @return string		The converted PHP code, with no wrapping tags
 	 */
-	public static function convert_asp($asp){
+	public static function convert_asp($asp){		
 		$asp	= explode(PHP_EOL, $asp);
 		
 		if(count($asp) == 1 && substr($asp[0], 0, 1) == '='){
-			return 'echo '.self::convert_asp_fragment(substr($asp[0], 1));
+			return 'echo '.self::convert_asp_fragment(substr($asp[0], 1)).';';
 		}
 		
 		$string	= '';
@@ -227,11 +232,9 @@ abstract class ASPPHPProcessor {
 			}
 
 			// Variable – `myVar = 1 --> $myVar = 1`
-			$line	= preg_replace('/^(\w*?)[ \t]?=[ \t]?(.*?)$/i', '\$$1 = $2;', $line);
-
-			$find		= array('/request\((.*?)\)/i');
-			$replace	= array('$_REQUEST[$1]');
-			$line	= preg_replace($find, $replace, $line);
+			$line	= preg_replace('/^(\w*?)[ \t]*?=[ \t]?(.*?)$/i', '\$$1 = $2;', $line);
+			
+			$line	= preg_replace(array_keys(self::$replace), array_values(self::$replace), $line);
 
 			$string	.= $line.PHP_EOL;
 		}
@@ -245,7 +248,12 @@ abstract class ASPPHPProcessor {
 	}
 
 	protected static function convert_asp_fragment($fragment){
+		$fragment	= preg_replace(array_keys(self::$replace), array_values(self::$replace), $fragment);
+		
 		if(preg_match('/\w[\w_\d]*?/', $fragment)){
+			if(preg_match('/\w[\w_\d]*?\(/', $fragment)){
+				return $fragment;
+			}
 			// Variable
 			return '$'.$fragment;
 		}
