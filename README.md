@@ -120,7 +120,7 @@ site's root directory. That's it.
   myVar = Request("field_name")
   ```
   
-  _cnoverts to_
+  _converts to_
   
   ```
   $myVar = $_REQUEST["field_name"]
@@ -130,6 +130,25 @@ site's root directory. That's it.
   if the field requested was not sent in the request
   you may trigger a warning.
 
+ 
+  ### Functions
+  
+  Some ASP functions are supported.
+  
+  ```
+  dim myVar
+  myVar	= Replace(otherVar, "find", "replace")
+  ```
+  
+  _converts to_
+    
+  ```
+  $myVar = str_replace("find", "replace", $otherVar)
+  ```
+  
+  The following functions are supported:
+  
+  - `Replace()`
     
 
 ## Advanced Usage ##
