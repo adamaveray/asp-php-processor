@@ -99,12 +99,13 @@ abstract class ASPPHPProcessor {
 							'default.aspx',
 							'default.aspx',
 							'index.html',
-							'index.htm');
+							'index.htm',
+							'index.php');
 
 		foreach($indices as $index){
 			$index_path	= $dir.$index;
 
-			if(file_exists($index_path)){
+			if(file_exists($index_path) && $index_path != __FILE__){
 				// Index file found
 				return $index_path;
 			}
@@ -123,9 +124,16 @@ abstract class ASPPHPProcessor {
 	 * @return string		The processed file contents
 	 */
 	public static function parse_file($path, $top = true){
+		$extension	= strtolower(pathinfo($path, PATHINFO_EXTENSION));
+		if($extension == 'php'){
+			ob_start();
+			include($path);
+			return ob_get_clean();
+		}
+		
 		$content	= file_get_contents($path);
 
-		if(strtolower(pathinfo($path, PATHINFO_EXTENSION)) != 'asp'){
+		if($extension != 'asp'){
 			// Non-ASP file – do not parse
 			return $content;
 		}
