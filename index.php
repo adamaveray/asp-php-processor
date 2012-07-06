@@ -205,7 +205,15 @@ abstract class ASPPHPProcessor {
 		foreach($asp as $line){
 			// Strip comments
 			if(strpos($line, '\'') !== false){
-				$line	= substr($line, 0, strpos($line, '\''));
+				$line	= preg_replace('/^(.+?)(\'[^"]+)$/', '$1', $line);
+			}
+
+			if(strpos($line, '\'') !== false){
+				if(strpos($line, '\\\'') !== false){
+					$line	= str_replace('\\\'', '\'', $line);
+				} else {
+					$line	= substr($line, 0, strpos($line, '\''));
+				}
 			}
 
 			$line	= trim($line);
