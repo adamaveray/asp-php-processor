@@ -15,7 +15,10 @@ abstract class ASPPHPProcessor {
 	
 	protected static $replace	= array(
 		'/request\((.*?)\)/i'				=> '$_REQUEST[$1]',
-		'/replace\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)'
+		'/response\.write[\(\s](.*?)\)?$/i'	=> 'echo $1',
+		'/replace\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)',
+		'/now\(\)/i'						=> 'date(\'d/m/Y h:i:s A\')',
+		'/Server.URLEncode\((.*?)\)/i'		=> 'urlencode($1)'
 	);
 
 	/**
@@ -205,7 +208,15 @@ abstract class ASPPHPProcessor {
 		foreach($asp as $line){
 			// Strip comments
 			if(strpos($line, '\'') !== false){
-				$line	= substr($line, 0, strpos($line, '\''));
+				$line	= preg_replace('/^(.+?)(\'[^"]+)$/', '$1', $line);
+			}
+
+			if(strpos($line, '\'') !== false){
+				if(strpos($line, '\\\'') !== false){
+					$line	= str_replace('\\\'', '\'', $line);
+				} else {
+					$line	= substr($line, 0, strpos($line, '\''));
+				}
 			}
 
 			$line	= trim($line);
@@ -236,7 +247,7 @@ abstract class ASPPHPProcessor {
 			
 			$line	= preg_replace(array_keys(self::$replace), array_values(self::$replace), $line);
 
-			$string	.= $line.PHP_EOL;
+			$string	.= rtrim($line,';').';'.PHP_EOL;
 		}
 
 		$string	= trim($string);
