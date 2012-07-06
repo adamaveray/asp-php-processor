@@ -15,6 +15,7 @@ abstract class ASPPHPProcessor {
 	
 	protected static $replace	= array(
 		'/request\((.*?)\)/i'				=> '$_REQUEST[$1]',
+		'/response\.write[\(\s](.*?)\)?$/i'	=> 'echo $1',
 		'/replace\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)'
 	);
 
@@ -244,7 +245,7 @@ abstract class ASPPHPProcessor {
 			
 			$line	= preg_replace(array_keys(self::$replace), array_values(self::$replace), $line);
 
-			$string	.= $line.PHP_EOL;
+			$string	.= rtrim($line,';').';'.PHP_EOL;
 		}
 
 		$string	= trim($string);

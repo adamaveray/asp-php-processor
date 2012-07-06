@@ -63,18 +63,19 @@ site's root directory. That's it.
 
   ```
   <p>Welcome to <%=pageName %></p>
+  <p>Username: <% Response.Write(username) %></p>
   ```
   
   _converts to_
   
   ```
   <p>Welcome to <?php echo $pageName;?></p>
+  <p>Username: <?php echo $username;?></p>
   ```
   
-  **Note:** Full `Response.Write` calls are _not yet supported_.
-  Additionally, the converted PHP code will be the full `echo`
-  call, not shorthand `<?=`, so will not be affected by PHP's
-  [`short_open_tags` setting](http://www.php.net/manual/en/ini.core.php#ini.short-open-tag).
+  **Note:** Shorthand ASP write calls (`<%=`) will be converted
+  to the full `echo` call, not shorthand `<?=`, so will not be
+  affected by PHP's [`short_open_tags` setting](http://www.php.net/manual/en/ini.core.php#ini.short-open-tag).
 
   
 - ### `if` Statements
