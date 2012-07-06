@@ -16,7 +16,9 @@ abstract class ASPPHPProcessor {
 	protected static $replace	= array(
 		'/request\((.*?)\)/i'				=> '$_REQUEST[$1]',
 		'/response\.write[\(\s](.*?)\)?$/i'	=> 'echo $1',
-		'/replace\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)'
+		'/replace\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)',
+		'/now\(\)/i'						=> 'date(\'d/m/Y h:i:s A\')',
+		'/Server.URLEncode\((.*?)\)/i'		=> 'urlencode($1)'
 	);
 
 	/**

@@ -150,6 +150,8 @@ site's root directory. That's it.
   The following functions are supported:
   
   - `Replace()`
+  - `Now()`
+  - `Server.URLEncode()`
     
 
 ## Advanced Usage ##
