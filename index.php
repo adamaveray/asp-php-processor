@@ -1,4 +1,8 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', true);
+error_reporting(E_ALL);
+
 abstract class ASPPHPProcessor {
 	const ACTION_DELETE		= 0;
 	const ACTION_COMMENT	= 1;
@@ -15,10 +19,23 @@ abstract class ASPPHPProcessor {
 	
 	protected static $replace	= array(
 		'/request\((.*?)\)/i'				=> '$_REQUEST[$1]',
-		'/response\.write[\(\s](.*?)\)?$/i'	=> 'echo $1',
-		'/replace\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)',
-		'/now\(\)/i'						=> 'date(\'d/m/Y h:i:s A\')',
-		'/Server.URLEncode\((.*?)\)/i'		=> 'urlencode($1)'
+		'/request.servervariables\((.*?)\)/i'	=> '$_SERVER[$1]',
+		'/response\.write\s*(.*?)$/i'		=> 'echo $1',
+		'/response\.write\((.*?)\)$/i'		=> 'echo $1',
+		'/response\.addheader\s+(.*?)$/i'	=> 'header($1)',
+		'/response\.addheader\((.*?)\)$/i'	=> 'header($1)',
+		'/isnull\((.*?)\)/i'				=> '!isset($1)',
+		'/header\("Location",\s*?([\w_]*?)\)$/i'	=> 'header("Location: ".\\$$1)',
+		'/response\.status\s*?= *?"(.*?)"/i'	=> 'header(\'HTTP/1.1 $1\')',
+		'/replace\s*\((.*?),(.*?),(.*?)\)/i'	=> 'str_replace($2,$3,\$$1)',
+		'/now\s*\(\)/i'						=> 'date(\'d/m/Y h:i:s A\')',
+		'/Year\s*\((.*?)\)/i'				=> 'date(\'Y\')',
+		'/Server.URLEncode\n*\((.*?)\)/i'	=> 'urlencode($1)',
+		'/left\((.*?),\s*?(\d+)\)/i'		=> 'substr($1, 0, $2)',
+		'/right\((.*?),\s*?(\d+)\)/i'		=> 'substr($1, -$2)',
+		'/(.*?)\s*?&/i'						=> '$1.',
+		'/([\s=\.])([\w][\w_]+[\s\.;])/i'	=> '$1\\$$2', // Final attempts at variables
+		'/\(([\w][\w_]+[\s\.;\)])/i'		=> '(\\$$1' // Final attempts at variables
 	);
 
 	/**
@@ -79,11 +96,25 @@ abstract class ASPPHPProcessor {
 						'jpeg'	=> 'image/jpeg',
 						'png'	=> 'image/png',
 						'gif'	=> 'image/gif',
+						'svg'	=> 'image/svg+xml',
+						'svgz'	=> 'image/svg+xml',
+						// Videos
+						'mp4'	=> 'video/mp4',
+						'm4v'	=> 'video/x-m4v',
+						'flv'	=> 'video/x-flv',
+						// Audio
+						'mp3'	=> 'audio/mpeg',
+						'ogg'	=> 'audio/ogg',
+						'oga'	=> 'audio/ogg',
+						'wav'	=> 'audio/wav',
 						// Fonts
 						'woff'	=> 'application/x-font-woff',
 						'otf'	=> 'font/opentype',
 						'eot'	=> 'application/vnd.ms-fontobject',
-						'ttf'	=> 'application/octet-stream');
+						'ttf'	=> 'application/octet-stream',
+						// Other
+						'pdf'	=> 'application/pdf',
+						'swf'	=> 'application/x-shockwave-flash');
 		if(isset($mimes[$ext])){
 			return $mimes[$ext];
 		}
@@ -134,7 +165,8 @@ abstract class ASPPHPProcessor {
 	public static function parse_file($path, $top = true){
 		$extension	= strtolower(pathinfo($path, PATHINFO_EXTENSION));
 		if($extension == 'php'){
-			ob_start();
+			$dirs	= explode('/', $path);
+			set_include_path(get_include_path().PATH_SEPARATOR.__DIR__.'/'.current($dirs));
 			include($path);
 			return ob_get_clean();
 		}
@@ -161,8 +193,15 @@ abstract class ASPPHPProcessor {
 
 			if($top){
 				ob_start();
-				eval('?'.'>'.$content);
-				$content	= ob_get_clean();
+				echo $content;
+				// $result	= eval('?'.'>'.$content);
+				if($result === false){
+					header('Content-Type: text/plain');
+					ob_end_flush();
+					echo $content;
+				} else {
+					$content	= ob_get_clean();
+				}
 			}
 
 		} elseif(self::$asp_action === self::ACTION_COMMENT){
@@ -197,7 +236,7 @@ abstract class ASPPHPProcessor {
 	 * @param $asp string	The ASP code to convert, with no wrapping tags
 	 * @return string		The converted PHP code, with no wrapping tags
 	 */
-	public static function convert_asp($asp){		
+	public static function convert_asp($asp){
 		$asp	= explode(PHP_EOL, $asp);
 		
 		if(count($asp) == 1 && substr($asp[0], 0, 1) == '='){
@@ -206,6 +245,11 @@ abstract class ASPPHPProcessor {
 		
 		$string	= '';
 		foreach($asp as $line){
+			// Ignore language definiton line, etc
+			if(strpos($line, '@') === 0){
+				continue;
+			}
+			
 			// Strip comments
 			if(strpos($line, '\'') !== false){
 				$line	= preg_replace('/^(.+?)(\'[^"]+)$/', '$1', $line);
@@ -293,6 +337,13 @@ abstract class ASPPHPProcessor {
 };
 
 // Process URL
+$path	= explode('/', trim($_SERVER['REQUEST_URI'], '/'));
+if(count($path) === 1 && $path[0] === ''){
+	include('menu.php');
+	exit;
+}
+ASPPHPProcessor::$root_dir	= str_replace('%20', ' ', __DIR__.'/'.array_shift($path).'/');
+
 ASPPHPProcessor::$asp_action	= ASPPHPProcessor::ACTION_PARSE;
 $result	= ASPPHPProcessor::parse_request($_SERVER['REQUEST_URI']);
 if(!isset($result)){
@@ -304,5 +355,6 @@ if(!isset($result)){
 }
 
 // Page found
+error_reporting(E_ALL ^ E_WARNING ^ E_NOTICE);
 echo ASPPHPProcessor::parse_file($result);
 ?>
